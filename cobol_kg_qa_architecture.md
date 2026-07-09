@@ -2,20 +2,36 @@
 
 ## 系统架构总览
 
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│                    COBOL KG QA System                                │
-│                                                                      │
-│  [1] Ingestion  →  [2] Parse  →  [3] Entity/Relation Extraction      │
-│       ↓                                                              │
-│  [4] Normalization  →  [5] Business Semantics Layer  (★新增)         │
-│       ↓                                                              │
-│  [6] Validation  →  [7] Export (CSV/JSONL)                           │
-│       ↓                                                              │
-│  [8] Neo4j Import  →  [9] Retrieval  →  [10] QA                     │
-│       ↓                                                              │
-│  [11] MCP Server  ←→  [12] Incremental Update                        │
-└──────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    S1["① 代码库摄入"]
+    S2["② 语法解析"]
+    S3["③ 实体关系抽取"]
+    S4["④ 归一化"]
+    S5["⑤ 业务语义层 ★"]
+    S6["⑥ 验证"]
+    S7["⑦ 导出 CSV/JSONL"]
+    S8["⑧ Neo4j 导入"]
+    S9["⑨ 混合检索"]
+    S10["⑩ 问答生成"]
+    S11["⑪ MCP 服务"]
+    S12["⑫ 增量更新"]
+
+    S1 -->|"文件清单 JSONL"| S2
+    S2 -->|"AST / ASG"| S3
+    S3 -->|"实体 & 关系 JSONL"| S4
+    S4 -->|"归一化实体 & 关系"| S5
+    S5 -->|"叠加业务标签 & 摘要"| S6
+    S6 -->|"验证后数据"| S7
+    S7 -->|"nodes.csv / edges.csv"| S8
+    S8 -->|"图数据库就绪"| S9
+    S9 -->|"检索结果"| S10
+    S9 -->|"图检索接口"| S11
+    S10 -->|"QA 回答"| S11
+    S1 -.->|"历史文件哈希"| S12
+    S12 -.->|"变更文件"| S2
+    S12 -.->|"受影响节点"| S5
+    S12 -.->|"变更实体"| S8
 ```
 
 > **执行模式分类说明**
@@ -25,7 +41,7 @@
 
 ---
 
-## Step 1 — Ingestion（代码库摄入）
+## Step 1 — 代码库摄入
 
 **执行模式：** 🔵 Rule-based
 
@@ -49,7 +65,7 @@
 
 ---
 
-## Step 2 — Parse（语法解析）
+## Step 2 — 语法解析
 
 **执行模式：** 🔵 Rule-based
 
@@ -98,7 +114,7 @@ PROCEDURE DIVISION.
 
 ---
 
-## Step 3 — Entity / Relation Extraction（实体关系抽取）
+## Step 3 — 实体关系抽取
 
 **执行模式：** 🔵 Rule-based（结构实体）+ 🟡 AI-assisted（复杂调用消歧）
 
@@ -151,7 +167,7 @@ PROCEDURE DIVISION.
 
 ---
 
-## Step 4 — Normalization（归一化）
+## Step 4 — 归一化
 
 **执行模式：** 🔵 Rule-based
 
@@ -175,7 +191,7 @@ PROCEDURE DIVISION.
 
 ---
 
-## Step 5 — Business Semantics Layer（业务语义层）★ 新增
+## Step 5 — 业务语义层 
 
 **执行模式：** 🟡 AI-assisted / 🔴 Fully-AI
 
@@ -233,7 +249,7 @@ DOMAIN_PREFIXES = {
 
 ---
 
-## Step 6 — Validation（验证）
+## Step 6 — 验证
 
 **执行模式：** 🔵 Rule-based
 
@@ -271,7 +287,7 @@ DOMAIN_PREFIXES = {
 
 ---
 
-## Step 7 — Export（导出 CSV/JSONL）
+## Step 7 — 导出 CSV/JSONL
 
 **执行模式：** 🔵 Rule-based
 
@@ -326,7 +342,7 @@ prog:ORDMAIN,entity:Order,HANDLES_ENTITY,,0.85,llm,
 
 ---
 
-## Step 8 — Neo4j Import（图数据库导入）
+## Step 8 — Neo4j 导入
 
 **执行模式：** 🔵 Rule-based
 
@@ -385,7 +401,7 @@ CREATE INDEX entity_domain IF NOT EXISTS FOR (n:Entity) ON (n.business_domain);
 
 ---
 
-## Step 9 — Retrieval（检索）
+## Step 9 — 混合检索
 
 **执行模式：** 🟡 AI-assisted（向量检索 + 图检索混合）
 
@@ -421,7 +437,7 @@ RETURN p.name, p.summary ORDER BY p.name
 
 ---
 
-## Step 10 — QA（问答）
+## Step 10 — 问答生成
 
 **执行模式：** 🔴 Fully-AI（LLM 综合检索结果生成回答）
 
@@ -458,7 +474,7 @@ ORDMAIN 的主要职责是什么，它依赖哪些程序？
 
 ---
 
-## Step 11 — MCP Server（模型上下文协议服务）
+## Step 11 — MCP 服务
 
 **执行模式：** 🔵 Rule-based（路由）+ 🔴 Fully-AI（LLM 调用）
 
@@ -512,7 +528,7 @@ ORDMAIN 的主要职责是什么，它依赖哪些程序？
 
 ---
 
-## Step 12 — Incremental Update（增量更新）
+## Step 12 — 增量更新
 
 **执行模式：** 🔵 Rule-based（变更检测）+ 🟡 AI-assisted（语义变更分析）
 
